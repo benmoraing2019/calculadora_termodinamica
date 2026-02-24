@@ -1,0 +1,9 @@
+{
+    "mezcla": [
+        { "id_espanol": "Metano",   "coolprop_name": "Methane",   "z_fraccion_molar": 0.50 },
+        { "id_espanol": "Etano",    "coolprop_name": "Ethane",    "z_fraccion_molar": 0.20 },
+        { "id_espanol": "Propano",  "coolprop_name": "Propane",   "z_fraccion_molar": 0.15 },
+        { "id_espanol": "n-Butano", "coolprop_name": "n-Butane",  "z_fraccion_molar": 0.10 },
+        { "id_espanol": "Nitrógeno","coolprop_name": "Nitrogen",  "z_fraccion_molar": 0.05 }
+    ]
+}

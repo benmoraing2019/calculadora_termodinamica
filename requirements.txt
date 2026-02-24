@@ -1,0 +1,23 @@
+# Ciencia de Datos y Digital Twins
+numpy
+scipy
+matplotlib
+pandas
+scikit-learn
+seaborn
+
+# Entorno de trabajo interactivo
+jupyterlab
+ipykernel
+
+# Simulación de Control (Alternativa a Simulink)
+control
+
+# Termodinámica
+CoolProp
+
+# APIs (Para mostrar la calculadora)
+fastapi
+uvicorn
+
+ipywidgets

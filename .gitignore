@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.dll
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.env/
+.envrc
+
+# VS Code settings
+.vscode/
+
+# Python environment files
+*.egg-info/
+*.egg
+
+# Data files
+*.csv
+*.tsv
+*.dat
+*.log
+
+# Build artifacts
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+*.pytest_cache/
+
+# Ignore local configs
+!src/common/config.json
+
+# Misc
+*.swp
+*.bak
+
+# Ignore results
+resultados.csv
