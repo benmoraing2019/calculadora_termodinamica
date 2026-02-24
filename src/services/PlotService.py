@@ -207,42 +207,84 @@ class PlotService:
             plt.show()
         return fig
 
+    @staticmethod
+    def _filtrar_por_percentil(T_arr, P_arr, p_low=2, p_high=98):
+        """
+        Elimina outliers de presión usando percentiles.
+        Devuelve arrays numpy filtrados y ordenados por T.
+        - p_low / p_high : percentiles de corte (default 2–98 %)
+        """
+        if len(P_arr) < 4:
+            return np.array(T_arr), np.array(P_arr)
+
+        P = np.array(P_arr)
+        T = np.array(T_arr)
+
+        P_lo = np.percentile(P, p_low)
+        P_hi = np.percentile(P, p_high)
+        mascara = (P >= P_lo) & (P <= P_hi)
+
+        # Además descartar saltos bruscos entre puntos consecutivos (≥ 10× el valor anterior)
+        P_filt = P[mascara]
+        T_filt = T[mascara]
+        if len(P_filt) > 2:
+            orden   = np.argsort(T_filt)
+            T_filt  = T_filt[orden]
+            P_filt  = P_filt[orden]
+            ratio   = np.abs(np.diff(P_filt) / (P_filt[:-1] + 1e-12))
+            saltos  = np.concatenate([[False], ratio > 10])
+            T_filt  = T_filt[~saltos]
+            P_filt  = P_filt[~saltos]
+
+        return T_filt, P_filt
+
     def _plot_phase_envelope(self, ax):
-        components = self.fm.components
         z          = self.fm.composition
         mezcla_str = self.fm.mixture_code
 
-        # Estimar rango de T razonable
-        T_min, T_max = 120, 400
-        T_arr = np.linspace(T_min, T_max, 80)
+        T_arr = np.linspace(120, 400, 80)
+        T_bub_raw, P_bub_raw = [], []
+        T_dew_raw, P_dew_raw = [], []
 
-        T_bub, P_bub = [], []
-        T_dew, P_dew = [], []
-
+        # ── Recolección de puntos crudos ──────────────────────────────────────
         for T in T_arr:
-            for Q, Tl, Pl in [(0.0, T_bub, P_bub), (1.0, T_dew, P_dew)]:
+            for Q, Tl, Pl in [(0.0, T_bub_raw, P_bub_raw),
+                               (1.0, T_dew_raw, P_dew_raw)]:
                 try:
                     AS = AbstractState("HEOS", mezcla_str)
                     AS.set_mole_fractions(z)
                     AS.update(CP.QT_INPUTS, Q, T)
                     P = AS.p()
+                    # Filtro primario: rango físico absoluto (1 kPa – 150 MPa)
                     if 1e3 < P < 1.5e8:
                         Tl.append(T)
-                        Pl.append(P / 1e6)
+                        Pl.append(P / 1e6)   # MPa
                 except Exception:
                     pass
 
-        if T_bub:
-            ax.plot(T_bub, P_bub, color=STYLE["liquid"], lw=2,
-                    label="Burbuja (Q=0)")
-        if T_dew:
-            ax.plot(T_dew, P_dew, color=STYLE["vapor"], lw=2,
-                    label="Rocío (Q=1)")
+        # ── Filtro percentil + anti-saltos ───────────────────────────────────
+        T_bub, P_bub = self._filtrar_por_percentil(T_bub_raw, P_bub_raw)
+        T_dew, P_dew = self._filtrar_por_percentil(T_dew_raw, P_dew_raw)
 
-        # Rellenar región bifásica
-        if T_bub and T_dew:
-            T_fill = T_bub + T_dew[::-1]
-            P_fill = P_bub + P_dew[::-1]
+        # ── Límites de ejes basados en datos limpios ──────────────────────────
+        todos_P = np.concatenate([P_bub, P_dew, [self.fm.P / 1e6]])
+        todos_T = np.concatenate([T_bub, T_dew, [self.fm.T]])
+        if len(todos_P) > 1:
+            margen_P = (todos_P.max() - todos_P.min()) * 0.12 or 0.5
+            margen_T = (todos_T.max() - todos_T.min()) * 0.08 or 10
+            ax.set_xlim(todos_T.min() - margen_T, todos_T.max() + margen_T)
+            ax.set_ylim(max(0, todos_P.min() - margen_P), todos_P.max() + margen_P)
+
+        # ── Graficar ──────────────────────────────────────────────────────────
+        if len(T_bub) > 1:
+            ax.plot(T_bub, P_bub, color=STYLE["liquid"], lw=2, label="Burbuja (Q=0)")
+        if len(T_dew) > 1:
+            ax.plot(T_dew, P_dew, color=STYLE["vapor"],  lw=2, label="Rocío (Q=1)")
+
+        # Región bifásica sombreada
+        if len(T_bub) > 1 and len(T_dew) > 1:
+            T_fill = list(T_bub) + list(T_dew[::-1])
+            P_fill = list(P_bub) + list(P_dew[::-1])
             ax.fill(T_fill, P_fill, alpha=0.12, color=STYLE["accent"])
 
         # Punto de operación
@@ -257,8 +299,8 @@ class PlotService:
         ax.set_xlabel("Temperatura (K)")
         ax.set_ylabel("Presión (MPa)")
         ax.set_title("Envolvente de Fases", color=STYLE["accent"])
-        leg = ax.legend(fontsize=7.5, facecolor=STYLE["panel"],
-                        labelcolor=STYLE["text"], edgecolor=STYLE["border"])
+        ax.legend(fontsize=7.5, facecolor=STYLE["panel"],
+                  labelcolor=STYLE["text"], edgecolor=STYLE["border"])
 
     # ─────────────────────────────────────────────────────────────────────────
     # 2. COMPOSICIONES POR FASE
